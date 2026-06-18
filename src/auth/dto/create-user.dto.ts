@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsNumber, Min } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsNumber, Min, Length } from 'class-validator';
 
 export class CreateUserDto {
     @IsEmail()
@@ -13,9 +13,15 @@ export class CreateUserDto {
 
     @IsString()
     @MinLength(8)
-    password!: string;
+    pwd!: string;
+}
 
-    //@IsString()
-    //stripeToken!: string;
+export class VerifyCodeDto {
+    @IsEmail()
+    email!: string;
+
+    @IsString()
+    @Length(6, 6) // El código debe ser de exactamente 6 caracteres
+    code!: string;
 }
 

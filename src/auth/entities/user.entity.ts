@@ -17,9 +17,15 @@ export class User {
     @Column('varchar')
     pwd!: string;
 
-    @Column('boolean', { default: true })
+    @Column('boolean', { default: false })
     isActive!: boolean;
 
     @Column('timestamp', { default: () => "CURRENT_TIMESTAMP + INTERVAL '1 month'" })
     subscriptionDate!: Date;
+
+    @Column('varchar', { nullable: true })
+    verificationCode!: string | null;
+
+    @Column('timestamp', { nullable: true })
+    verificationCodeExpires!: Date | null;
 }
