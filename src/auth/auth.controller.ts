@@ -26,13 +26,13 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Post('/checkemailpwd')
-  @ApiOperation({ summary: 'Paso 1: Verificar email y contraseña para actualización de contraseña' })
-  async checkEmailPwd(@Body() updatePwdUserDto: UpdatePwdUserDto) {
-    return this.authService.checkEmailPwd(updatePwdUserDto);
+  @Get('/checkemailpwd/:email')
+  @ApiOperation({ summary: 'Verificar email y enviar código de recuperación de contraseña' })
+  async checkEmailPwd(@Param('email') email: string) {
+    return this.authService.checkEmailPwd(email);
   }
 
-  @Post('/updatepwd')
+  @Post('/checkemailpwd')
   @ApiOperation({ summary: 'Paso 2: Actualizar contraseña' })
   async updatePwd(@Body() updatePwdUserDto: UpdatePwdUserDto) {
     return this.authService.updatePwd(updatePwdUserDto);

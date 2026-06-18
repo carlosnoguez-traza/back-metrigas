@@ -8,6 +8,9 @@ export class UpdatePwdUserDto extends PartialType(CreateUserDto) {
 
     @ApiProperty({ example: 'nueva_contraseña123', description: 'Nueva contraseña del usuario' })
     pwd!: string;
+
+    @ApiProperty({ example: '123456', description: 'Código de verificación enviado al correo' })
+    code!: string;
 }
 
 export class UpdateMailUserDto extends PartialType(CreateUserDto) {
