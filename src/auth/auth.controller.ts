@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdatePwdUserDto } from './dto/update-pwd-user.dto';
 import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
 
 @Controller('auth')
@@ -26,4 +26,15 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @Post('/checkemailpwd')
+  @ApiOperation({ summary: 'Paso 1: Verificar email y contraseña para actualización de contraseña' })
+  async checkEmailPwd(@Body() updatePwdUserDto: UpdatePwdUserDto) {
+    return this.authService.checkEmailPwd(updatePwdUserDto);
+  }
+
+  @Post('/updatepwd')
+  @ApiOperation({ summary: 'Paso 2: Actualizar contraseña' })
+  async updatePwd(@Body() updatePwdUserDto: UpdatePwdUserDto) {
+    return this.authService.updatePwd(updatePwdUserDto);
+  }
 }

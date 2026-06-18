@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { UpdatePwdUserDto } from './dto/update-pwd-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
@@ -116,5 +116,25 @@ export class AuthService {
         subscriptionDate: user.subscriptionDate,
       },
     };
+  }
+
+  async checkEmailPwd(updatePwdUserDto: UpdatePwdUserDto) {
+    return { message: 'Funcionalidad de actualización de contraseña no implementada aún' };
+  }
+
+  async updatePwd(updatePwdUserDto: UpdatePwdUserDto) {
+    // 1. Validar si el usuario ya existe
+    const existingUser = await this.userRepository.findOne({ where: { email: updatePwdUserDto.email } });
+    if (!existingUser) throw new BadRequestException('Correo no registrado');
+
+    // 2. Generar código de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date();
+    expires.setMinutes(expires.getMinutes() + 15); // Expira en 15 minutos
+
+    // 3. Guardar código y expiración en el usuario
+
+
+    return { message: 'Funcionalidad de actualización de contraseña no implementada aún' };
   }
 }
