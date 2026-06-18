@@ -25,3 +25,12 @@ export class VerifyCodeDto {
     code!: string;
 }
 
+export class LoginDto {
+    @IsEmail()
+    email!: string;
+
+    @IsString()
+    @MinLength(8)
+    pwd!: string;
+}
+

@@ -1,15 +1,19 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { CreateUserDto, VerifyCodeDto } from './dto/create-user.dto';
+import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import bycrypt from 'bcryptjs';
 import { Resend } from 'resend';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-  constructor(@InjectRepository(User) private userRepository: Repository<User>) { }
+  constructor(
+    @InjectRepository(User) private userRepository: Repository<User>,
+    private jwtService: JwtService,
+  ) { }
 
   async signUp(createUserDto: CreateUserDto) {
     const { email, pwd } = createUserDto;
@@ -37,9 +41,6 @@ export class AuthService {
 
     // 5. Enviar correo con Resend
     try {
-      //if (!process.env.RESEND_API_KEY) {
-      //  console.warn('RESEND_API_KEY no está configurada. Email no enviado.');
-      //} else {
       const resend = new Resend('re_Ax3BbcwT_Lik3ekdgWdavPVRBsvopdFu8');
       await resend.emails.send({
         from: 'onboarding@resend.dev',
@@ -47,7 +48,6 @@ export class AuthService {
         subject: 'Verifica tu cuenta',
         html: `<p>Tu código de verificación es: <strong>${code}</strong>. Expira en 15 minutos.</p>`,
       });
-      //}
     } catch (error) {
       console.error('Error enviando correo', error);
     }
@@ -85,5 +85,36 @@ export class AuthService {
     await this.userRepository.save(user);
 
     return { message: 'Cuenta verificada con éxito. Ya puedes iniciar sesión.' };
+  }
+
+  async login(loginDto: LoginDto) {
+    const { email, pwd } = loginDto;
+
+    // 1. Buscar usuario
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    // 2. Verificar que la cuenta está activa
+    if (!user.isActive) throw new BadRequestException('La cuenta no está verificada. Por favor verifica tu correo');
+
+    // 3. Validar contraseña
+    const isPasswordValid = await bycrypt.compare(pwd, user.pwd);
+    if (!isPasswordValid) throw new BadRequestException('Correo o contraseña incorrectos');
+
+    // 4. Generar JWT token
+    const payload = { sub: user.id, email: user.email };
+    const accessToken = this.jwtService.sign(payload);
+
+    // 5. Retornar token y datos del usuario
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        age: user.age,
+        subscriptionDate: user.subscriptionDate,
+      },
+    };
   }
 }
