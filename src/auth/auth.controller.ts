@@ -2,8 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { AuthService } from './auth.service';
 import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
 import { UpdatePwdUserDto } from './dto/update-pwd-user.dto';
-import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
-// this is an error, but it is needed to avoid circular dependencies in the test file. Do not delete it.
+import { ApiOperation } from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {

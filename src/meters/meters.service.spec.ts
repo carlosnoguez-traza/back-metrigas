@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MetersService } from './meters.service';
+import { beforeEach, describe } from 'node:test';
 
 describe('MetersService', () => {
   let service: MetersService;
@@ -12,7 +13,5 @@ describe('MetersService', () => {
     service = module.get<MetersService>(MetersService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
+
 });

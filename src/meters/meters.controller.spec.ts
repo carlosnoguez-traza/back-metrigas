@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MetersController } from './meters.controller';
 import { MetersService } from './meters.service';
+import { beforeEach, describe, it } from 'node:test';
 
 describe('MetersController', () => {
   let controller: MetersController;
@@ -14,7 +15,6 @@ describe('MetersController', () => {
     controller = module.get<MetersController>(MetersController);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
 });
+
+

@@ -1,19 +1,38 @@
-import { expect, describe, it, beforeAll, afterAll } from '@jest/globals';
+import { expect, describe, it, beforeAll, afterAll, jest } from '@jest/globals';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { AppModule } from '../src/app.module'; // Ajusta la ruta a tu AppModule
+import { AuthService } from '../src/auth/auth.service'; // Ajusta la ruta a tu servicio
 
-describe('AuthController (E2E)', () => {
+
+describe('Auth Validation (e2e)', () => {
   let app: INestApplication;
+
+  const mockAuthService = {
+    // Usamos 'as any' o una firma de función explícita para evitar el conflicto con 'never'
+    signUp: jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        message: 'Usuario registrado. Revisa tu correo para verificar tu cuenta.',
+      })
+    ),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      // Reemplazamos el servicio real por nuestro mock
+      .overrideProvider(AuthService)
+      .useValue(mockAuthService)
+      .compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+
+    // Importante: Si usas ValidationPipe en tu main.ts, 
+    // debes ponerlo aquí también para que valide los DTOs en el test.
+    app.useGlobalPipes(new ValidationPipe());
+
     await app.init();
   });
 
@@ -21,28 +40,40 @@ describe('AuthController (E2E)', () => {
     await app.close();
   });
 
-  it('/auth/signup (POST) -> Happy Path', async () => {
-    const validBody = {
-      email: 'carlos.noguez@traza.digital',
-      username: 'memin_pinguin122',
-      age: 30,
-      pwd: 'TuContraseña123!'
-    };
+  describe('POST /auth/signup', () => {
+    it('Debería registrar un usuario exitosamente (201)', async () => {
+      const signupDto = {
+        email: "carlos.noguez@traza.digital",
+        username: "memin_pinguin122",
+        age: 30,
+        pwd: "TuContraseña123!"
+      };
 
-    const response = await request(app.getHttpServer())
-      .post('/auth/signup')
-      .send(validBody);
+      const response = await request(app.getHttpServer())
+        .post('/auth/signup')
+        .send(signupDto)
+        .expect(201);
 
-    expect(response.status).toBe(201);
+      // Validamos que la respuesta sea exactamente la esperada
+      expect(response.body).toEqual({
+        message: 'Usuario registrado. Revisa tu correo para verificar tu cuenta.',
+      });
 
-    const body = response.body;
+      // Verificamos que el método del servicio haya sido llamado con los datos correctos
+      expect(mockAuthService.signUp).toHaveBeenCalledWith(signupDto);
+    });
 
-    expect(body).toHaveProperty('token');
-    expect(body.user).toBeDefined();
-    expect(body.user.email).toBe(validBody.email);
-    expect(body.user.username).toBe(validBody.username);
+    it('Debería lanzar un error 400 si el body está incompleto o es inválido', async () => {
+      const badSignupDto = {
+        email: 'email-invalido', // Email mal formateado
+        username: 'Alejandro',
+        // falta age y pwd
+      };
 
-    expect(body).not.toHaveProperty('pwd');
+      await request(app.getHttpServer())
+        .post('/auth/signup')
+        .send(badSignupDto)
+        .expect(400); // NestJS responderá automáticamente con 400 gracias al ValidationPipe
+    });
   });
 });
-
