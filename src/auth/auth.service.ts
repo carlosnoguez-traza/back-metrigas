@@ -96,37 +96,26 @@ export class AuthService {
 
   async createSubscription(userId: string, userEmail: string, priceId: string) {
     try {
-      // 1. Crear el Customer en Stripe
-      const customer = await this.stripe.customers.create({
-        email: userEmail,
+      // Generamos una sesión de Checkout 100% administrada por Stripe
+      const session = await this.stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        customer_email: userEmail,
+        line_items: [
+          {
+            price: priceId, // Aquí se inyecta dinámicamente tu ID de $80 MXN
+            quantity: 1,
+          },
+        ],
+        // URLs a las que Stripe redirigirá al usuario tras terminar
+        success_url: 'https://tuapp.metrigas.com/success',
+        cancel_url: 'https://tuapp.metrigas.com/cancel',
         metadata: { userId },
       });
 
-      // 2. Crear la Suscripción
-      const subscription = await this.stripe.subscriptions.create({
-        customer: customer.id,
-        items: [{ price: priceId }],
-        payment_behavior: 'default_incomplete',
-        payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent'],
-      });
-
-      // 3. Extraer el Client Secret necesario para Flutter
-      // Forzamos la factura como any temporalmente para saltarnos la restricción estricta de Stripe
-      const latestInvoice = subscription.latest_invoice as any;
-
-      // Ahora extraemos el payment_intent con la certeza de que está ahí
-      const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent;
-
-      if (!paymentIntent || !paymentIntent.client_secret) {
-        throw new BadRequestException('No se pudo generar el secreto de pago para la suscripción.');
-      }
-
-      // 4. Retornar los datos exactamente como los pide tu historia técnica
+      // Retornamos únicamente la URL de pago para el Front
       return {
-        subscriptionId: subscription.id,
-        clientSecret: paymentIntent.client_secret,
-        customerId: customer.id,
+        paymentUrl: session.url,
       };
 
     } catch (error) {
