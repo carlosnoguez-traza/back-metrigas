@@ -13,11 +13,7 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "stripe:listen": "stripe listen --forward-to localhost:3000/auth/stripe/webhook"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -34,6 +30,7 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.14.0",
     "rxjs": "^7.8.1",
+    "stripe": "^22.2.2",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^1.0.0"
   },
@@ -44,6 +41,7 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@stripe/cli": "^1.42.14",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",

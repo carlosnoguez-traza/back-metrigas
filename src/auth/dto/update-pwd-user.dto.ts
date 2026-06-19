@@ -13,7 +13,7 @@ export class UpdatePwdUserDto extends PartialType(CreateUserDto) {
     code!: string;
 }
 
-export class UpdateMailUserDto extends PartialType(CreateUserDto) {
+export class MailDto extends PartialType(CreateUserDto) {
     @ApiProperty({ example: 'correo asociado al usuario', description: 'Correo electrónico del usuario' })
     email!: string;
 }
