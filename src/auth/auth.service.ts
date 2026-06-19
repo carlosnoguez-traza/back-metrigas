@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -7,13 +7,20 @@ import bycrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { JwtService } from '@nestjs/jwt';
 import { UpdatePwdUserDto } from './dto/update-pwd-user.dto';
+import Stripe from 'stripe';
 
 @Injectable()
 export class AuthService {
+  private stripe: Stripe;
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
     private jwtService: JwtService,
-  ) { }
+
+  ) {
+    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+      apiVersion: '2024-04-10' as any,
+    });
+  }
 
   async signUp(createUserDto: CreateUserDto) {
     const { email, pwd } = createUserDto;
@@ -79,12 +86,55 @@ export class AuthService {
     }
 
     // 4. Activar usuario y limpiar campos de verificación
-    user.isActive = true;
+    //user.isActive = true;
     user.verificationCode = null;
     user.verificationCodeExpires = null;
     await this.userRepository.save(user);
 
     return { message: 'Cuenta verificada con éxito. Ya puedes iniciar sesión.' };
+  }
+
+  async createSubscription(userId: string, userEmail: string, priceId: string) {
+    try {
+      // 1. Crear el Customer en Stripe
+      const customer = await this.stripe.customers.create({
+        email: userEmail,
+        metadata: { userId },
+      });
+
+      // 2. Crear la Suscripción
+      const subscription = await this.stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ price: priceId }],
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
+      });
+
+      // 3. Extraer el Client Secret necesario para Flutter
+      // Forzamos la factura como any temporalmente para saltarnos la restricción estricta de Stripe
+      const latestInvoice = subscription.latest_invoice as any;
+
+      // Ahora extraemos el payment_intent con la certeza de que está ahí
+      const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent;
+
+      if (!paymentIntent || !paymentIntent.client_secret) {
+        throw new BadRequestException('No se pudo generar el secreto de pago para la suscripción.');
+      }
+
+      // 4. Retornar los datos exactamente como los pide tu historia técnica
+      return {
+        subscriptionId: subscription.id,
+        clientSecret: paymentIntent.client_secret,
+        customerId: customer.id,
+      };
+
+    } catch (error) {
+      if (error instanceof Stripe.errors.StripeError) {
+        throw new BadRequestException(`Stripe Error: ${error.message}`);
+      }
+      throw new InternalServerErrorException('Error interno al procesar la suscripción.');
+    }
   }
 
   async login(loginDto: LoginDto) {
