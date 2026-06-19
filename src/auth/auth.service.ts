@@ -48,7 +48,7 @@ export class AuthService {
 
     // 5. Enviar correo con Resend
     try {
-      const resend = new Resend('re_Ax3BbcwT_Lik3ekdgWdavPVRBsvopdFu8');
+      const resend = new Resend(process.env.RESEND_API_KEY || '');
       await resend.emails.send({
         from: 'onboarding@resend.dev',
         to: email,
