@@ -1,10 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Headers,
+  Req,
+  BadRequestException
+} from '@nestjs/common';
+import { Request } from 'express'; // 👈 Importante: Viene de express para evitar conflictos de tipos
 import { AuthService } from './auth.service';
 import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
-import { UpdatePwdUserDto } from './dto/update-pwd-user.dto';
+import { MailDto, UpdatePwdUserDto } from './dto/update-pwd-user.dto';
 import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
-import { CreateSubscriptionDto } from './dto/create-subscription.dto';
-// this is an error, but it is needed to avoid circular dependencies in the test file. Do not delete it.
 
 @Controller('auth')
 export class AuthController {
@@ -24,15 +32,38 @@ export class AuthController {
 
   @Post('paymethods')
   @ApiOperation({ summary: 'POST /auth/paymethods - Crear Suscripción en Stripe' })
-  async paymethods(@Req() req, @Body() createSubscriptionDto: CreateSubscriptionDto) {
-    // Obtenemos los datos del usuario inyectados por el JwtAuthGuard
-    const userId = req.user.sub; // o req.user.id dependiendo de tu JWT Payload
-    const userEmail = req.user.email;
+  async paymethods(@Body() mailDto: MailDto) {
+    return await this.authService.createSubscription(mailDto);
+  }
 
-    // Asignamos un Price ID fallback si el cliente no envía ninguno en el JSON
-    const priceId = createSubscriptionDto.priceId || 'price_1DEFAULT_REPLACE_THIS';
+  // Endpoint al que Stripe le pegará directamente por detrás
+  @Post('stripe/webhook')
+  async stripeWebhook(
+    @Headers('stripe-signature') signature: string | undefined,
+    @Req() req: Request & { rawBody?: Buffer },
+  ) {
+    if (!signature) {
+      throw new BadRequestException('Falta la firma de Stripe');
+    }
 
-    return await this.authService.createSubscription(userId, userEmail, priceId);
+    const rawBody = req.rawBody;
+
+    if (!rawBody) {
+      throw new BadRequestException('El cuerpo de la petición (rawBody) está vacío o no configurado.');
+    }
+
+    return await this.authService.handleWebhook(signature, rawBody);
+  }
+
+  // Rutas simples solo de redirección visual para el usuario de tu app
+  @Get('pay/success')
+  paymentSuccess() {
+    return { message: 'Tu pago está siendo procesado por el sistema. ¡Gracias!' };
+  }
+
+  @Get('pay/failed')
+  paymentFailed() {
+    return { message: 'El pago fue cancelado o rechazado.' };
   }
 
   @Post('/login')

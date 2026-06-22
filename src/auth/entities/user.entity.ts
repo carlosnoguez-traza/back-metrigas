@@ -28,4 +28,10 @@ export class User {
 
     @Column('timestamp', { nullable: true })
     verificationCodeExpires!: Date | null;
+
+    @Column({ name: 'stripe_customer_id', type: 'varchar', nullable: true })
+    stripeCustomerId?: string;
+
+    @Column({ name: 'stripe_subscription_id', type: 'varchar', nullable: true })
+    stripeSubscriptionId?: string;
 }

@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 import bycrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { JwtService } from '@nestjs/jwt';
-import { UpdatePwdUserDto } from './dto/update-pwd-user.dto';
+import { MailDto, UpdatePwdUserDto } from './dto/update-pwd-user.dto';
 import Stripe from 'stripe';
 
 @Injectable()
@@ -17,7 +17,7 @@ export class AuthService {
     private jwtService: JwtService,
 
   ) {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+    this.stripe = new Stripe('sk_test_51Tj45zRFZd5tQ6sqTU3fSPETQESZPZL2nYlH0PLNrOJoIdWTwOfEKmgpSGU02iXGwREjkZdgDtjWr7ZtUsz6INe700o6wWE4cC', {
       apiVersion: '2024-04-10' as any,
     });
   }
@@ -94,36 +94,67 @@ export class AuthService {
     return { message: 'Cuenta verificada con éxito. Ya puedes iniciar sesión.' };
   }
 
-  async createSubscription(userId: string, userEmail: string, priceId: string) {
-    try {
-      // Generamos una sesión de Checkout 100% administrada por Stripe
-      const session = await this.stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'subscription',
-        customer_email: userEmail,
-        line_items: [
-          {
-            price: priceId, // Aquí se inyecta dinámicamente tu ID de $80 MXN
-            quantity: 1,
-          },
-        ],
-        // URLs a las que Stripe redirigirá al usuario tras terminar
-        success_url: 'https://tuapp.metrigas.com/success',
-        cancel_url: 'https://tuapp.metrigas.com/cancel',
-        metadata: { userId },
-      });
 
-      // Retornamos únicamente la URL de pago para el Front
-      return {
-        paymentUrl: session.url,
-      };
+  async createSubscription(mailDto: MailDto) {
+    const { email } = mailDto;
 
-    } catch (error) {
-      if (error instanceof Stripe.errors.StripeError) {
-        throw new BadRequestException(`Stripe Error: ${error.message}`);
-      }
-      throw new InternalServerErrorException('Error interno al procesar la suscripción.');
+    // 1. Identificar al usuario en Postgres
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException(`Usuario con email ${email} no encontrado`);
     }
+
+    // 2. Crear la sesión de checkout en Stripe
+    const session = await this.stripe.checkout.sessions.create({
+      line_items: [{ price: 'price_1TjkBQRFZd5tQ6sq0QTvtUDr', quantity: 1 }],
+      mode: 'subscription',
+      customer_email: user.email, // Stripe creará un cliente con este correo si no existe
+      metadata: {
+        userId: user.id.toString(), // 👈 Guardamos el ID del usuario aquí (Stripe solo acepta strings en metadata)
+      },
+      // El éxito en frontend solo visualiza, ya no procesa la lógica pesada
+      success_url: 'http://localhost:3000/auth/pay/success',
+      cancel_url: 'http://localhost:3000/auth/pay/failed',
+    });
+
+    return { url: session.url }; // Retornamos la URL a la que debe redirigirse el usuario para pagar
+  }
+
+  async handleWebhook(signature: string, rawBody: Buffer) {
+    let event;
+
+    try {
+      // Validamos que el evento realmente venga de Stripe usando tu Webhook Secret Key
+      event = this.stripe.webhooks.constructEvent(
+        rawBody,
+        signature,
+        'whsec_5ef8945714cda8e2189c94fd64d3dc7a3c246ff4637bf3eb18f2a982d032f7e4', // Configura esto en tu .env
+      );
+    } catch (err) {
+      throw new BadRequestException(`Webhook Error: `);
+    }
+
+    // Escuchamos cuando un checkout se completa con éxito
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object; // Objeto de la sesión de Stripe
+
+      const userId = session.metadata?.userId;
+      const stripeCustomerId = session.customer;
+      const stripeSubscriptionId = session.subscription;
+
+      if (userId) {
+        // 3. Actualizamos la base de datos en Postgres mediante el repositorio
+        await this.userRepository.update(userId, {
+          isActive: true,
+          stripeCustomerId: stripeCustomerId as string,
+          stripeSubscriptionId: stripeSubscriptionId as string,
+        });
+
+        console.log(`Usuario ${userId} actualizado a Premium exitosamente.`);
+      }
+    }
+
+    return { received: true };
   }
 
   async login(loginDto: LoginDto) {
