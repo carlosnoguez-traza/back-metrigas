@@ -12,7 +12,7 @@ import { Request } from 'express'; // 👈 Importante: Viene de express para evi
 import { AuthService } from './auth.service';
 import { CreateUserDto, VerifyCodeDto, LoginDto } from './dto/create-user.dto';
 import { MailDto, UpdatePwdUserDto } from './dto/update-pwd-user.dto';
-import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
+import { ApiOperation } from '@nestjs/swagger';
 
 @Controller('auth')
 export class AuthController {
