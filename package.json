@@ -13,7 +13,9 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/auth/stripe/webhook"
+    "stripe:listen": "stripe listen --forward-to localhost:3000/auth/stripe/webhook",
+    "test:e2e": "jest --config ./test/e2e.json",
+    "test:e2e:report": "npm run test:e2e -- --reporters=default --reporters=jest-html-reporter"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -51,6 +53,7 @@
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.0.0",
     "jest": "^30.4.2",
+    "jest-html-reporter": "^4.4.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.2.2",
