@@ -1,10 +1,22 @@
 import { Module } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { User } from './entities/user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+
+// Controladores
+import { SingUpController } from './controllers/singup.controller';
+import { LoginController } from './controllers/login.controller';
+import { PasswordController } from './controllers/pasword.controller';
+import { PayController } from './controllers/pay.controller';
+
+// Servicios
+import { SingUpService } from './services/singup.services';
+import { LoginService } from './services/login.services';
+import { PasswordService } from './services/password.services';
+import { PayService } from './services/pay.services';
+
+// Entidades
+import { User } from './entities/user.entity';
 
 @Module({
   imports: [
@@ -18,7 +30,17 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService],
+  controllers: [
+    SingUpController,
+    LoginController,
+    PasswordController,
+    PayController,
+  ],
+  providers: [
+    SingUpService,
+    LoginService,
+    PasswordService,
+    PayService,
+  ],
 })
 export class AuthModule { }
