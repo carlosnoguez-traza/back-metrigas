@@ -22,6 +22,7 @@ import { User } from './entities/user.entity';
   imports: [
     TypeOrmModule.forFeature([User]),
     JwtModule.registerAsync({
+      global: true,
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('JWT_SECRET'),

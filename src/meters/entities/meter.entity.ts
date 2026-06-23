@@ -16,6 +16,6 @@ export class Meter {
     ownerid!: string;
 
     @ManyToOne(() => User)
-    @JoinColumn({ name: 'id' })
+    @JoinColumn({ name: 'ownerid' })
     owner!: User;
 }
