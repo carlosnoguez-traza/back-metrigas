@@ -1,26 +1,51 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Meter } from './entities/meter.entity';
 import { CreateMeterDto } from './dto/create-meter.dto';
-import { UpdateMeterDto } from './dto/update-meter.dto';
 
 @Injectable()
 export class MetersService {
-  create(createMeterDto: CreateMeterDto) {
-    return 'This action adds a new meter';
+  constructor(
+    @InjectRepository(Meter)
+    private readonly meterRepository: Repository<Meter>,
+  ) { }
+
+  async bulkUpsertMeters(createMeterDtos: CreateMeterDto[]): Promise<void> {
+    // 1. Transformamos el DTO al formato de la entidad
+    const metersToUpsert = createMeterDtos.map((dto) => {
+      return this.meterRepository.create({
+        id: dto.id,
+        metername: dto.metername,
+        capacity: dto.capacity ? parseFloat(dto.capacity) : 0,
+        ownerid: dto.ownerId,
+      });
+    });
+
+    try {
+      // 2. Ejecutamos el Upsert masivo corregido
+      await this.meterRepository.upsert(metersToUpsert, {
+        conflictPaths: ['id'], // Columna que dispara el conflicto (Primary Key)
+      });
+    } catch (error) {
+      console.error('Error ejecutando el upsert masivo de medidores:', error);
+      throw new InternalServerErrorException('No se pudieron sincronizar los medidores');
+    }
   }
 
-  findAll() {
-    return `This action returns all meters`;
-  }
+  async createMeter(createMeterDto: CreateMeterDto): Promise<void> {
+    const meter = this.meterRepository.create({
+      id: createMeterDto.id,
+      metername: createMeterDto.metername,
+      capacity: createMeterDto.capacity ? parseFloat(createMeterDto.capacity) : 0,
+      ownerid: createMeterDto.ownerId,
+    });
 
-  findOne(id: number) {
-    return `This action returns a #${id} meter`;
-  }
-
-  update(id: number, updateMeterDto: UpdateMeterDto) {
-    return `This action updates a #${id} meter`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} meter`;
+    try {
+      await this.meterRepository.save(meter);
+    } catch (error) {
+      console.error('Error creando el medidor:', error);
+      throw new InternalServerErrorException('No se pudo crear el medidor');
+    }
   }
 }

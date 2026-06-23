@@ -1,34 +1,31 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, ParseArrayPipe, Get } from '@nestjs/common';
 import { MetersService } from './meters.service';
 import { CreateMeterDto } from './dto/create-meter.dto';
-import { UpdateMeterDto } from './dto/update-meter.dto';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('meters')
 export class MetersController {
-  constructor(private readonly metersService: MetersService) {}
+  constructor(private readonly metersService: MetersService) { }
+
+  @Post('migrate')
+  @UseGuards(AuthGuard)
+  async uploadBulkMeters(
+    @Body(new ParseArrayPipe({ items: CreateMeterDto })) createMeterDtos: CreateMeterDto[]
+  ) {
+    await this.metersService.bulkUpsertMeters(createMeterDtos);
+    return {
+      ok: true,
+      message: 'Medidores sincronizados y actualizados correctamente',
+    };
+  }
 
   @Post()
-  create(@Body() createMeterDto: CreateMeterDto) {
-    return this.metersService.create(createMeterDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.metersService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.metersService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateMeterDto: UpdateMeterDto) {
-    return this.metersService.update(+id, updateMeterDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.metersService.remove(+id);
+  @UseGuards(AuthGuard)
+  async createMeter(@Body() createMeterDto: CreateMeterDto) {
+    await this.metersService.createMeter(createMeterDto);
+    return {
+      ok: true,
+      message: 'Medidor creado correctamente',
+    };
   }
 }
