@@ -17,7 +17,7 @@ export class AuthService {
     private jwtService: JwtService,
 
   ) {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+    this.stripe = new Stripe('sk_test_51Tj45zRFZd5tQ6sqTU3fSPETQESZPZL2nYlH0PLNrOJoIdWTwOfEKmgpSGU02iXGwREjkZdgDtjWr7ZtUsz6INe700o6wWE4cC', {
       apiVersion: '2024-04-10' as any,
     });
   }
@@ -128,7 +128,7 @@ export class AuthService {
       event = this.stripe.webhooks.constructEvent(
         rawBody,
         signature,
-        process.env.STRIPE_WEBHOOK_SECRET || '', // Configura esto en tu .env
+        'whsec_5ef8945714cda8e2189c94fd64d3dc7a3c246ff4637bf3eb18f2a982d032f7e4',
       );
     } catch (err) {
       throw new BadRequestException(`Webhook Error: `);
