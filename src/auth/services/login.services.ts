@@ -41,6 +41,7 @@ export class LoginService {
                 username: user.username,
                 age: user.age,
                 subscriptionDate: user.subscriptionDate,
+                isActive: user.isActive
             },
         };
     }
