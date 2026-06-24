@@ -5,7 +5,6 @@ import { User } from '../entities/user.entity';
 import { Repository } from 'typeorm';
 import bycrypt from 'bcryptjs';
 import { Resend } from 'resend';
-import Stripe from 'stripe';
 
 @Injectable()
 export class SingUpService {
