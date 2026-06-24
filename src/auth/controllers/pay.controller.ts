@@ -44,6 +44,7 @@ export class PayController {
         return await this.payService.handleWebhook(signature, rawBody);
     }
 
+
     // Rutas simples solo de redirección visual para el usuario de tu app
     @Get('pay/success')
     @Header('Content-Type', 'text/html; charset=utf-8')
