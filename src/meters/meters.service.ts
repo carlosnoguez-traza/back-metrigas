@@ -48,4 +48,10 @@ export class MetersService {
       throw new InternalServerErrorException('No se pudo crear el medidor');
     }
   }
+
+  async getMetersByOwner(ownerId: string): Promise<Meter[]> {
+    return await this.meterRepository.find({
+      where: { ownerid: ownerId },
+    });
+  }
 }
