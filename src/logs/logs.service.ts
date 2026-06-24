@@ -6,49 +6,151 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateLogDto } from './dto/create-log.dto';
 import { Log } from './entities/log.entity';
+import { Meter } from '../meters/entities/meter.entity';
+import { Resend } from 'resend';
 
 @Injectable()
 export class LogsService {
+  private readonly resend: Resend;
+
   constructor(
     @InjectRepository(Log)
     private readonly logsRepository: Repository<Log>,
-  ) { }
+    @InjectRepository(Meter)
+    private readonly meterRepository: Repository<Meter>,
+  ) {
+    this.resend = new Resend(process.env.RESEND_API_KEY);
+  }
 
   async create(createLogDto: CreateLogDto): Promise<Log> {
     const { currentPercentage, meterId } = createLogDto;
 
-    // Validar que no se admitan porcentajes negativos
     if (currentPercentage < 0) {
       throw new BadRequestException(
         'currentPercentage must not be a negative number',
       );
     }
 
-    // Validar que el porcentaje no supere 100
     if (currentPercentage > 100) {
       throw new BadRequestException(
         'currentPercentage must not exceed 100',
       );
     }
 
-    // Asignar la fecha de medición automáticamente en el servidor
+    const lastLog = await this.getLastLogByMeter(meterId);
+
     const meditionDate = new Date();
 
-    // Crear el nuevo log con UUID generado
     const newLog = this.logsRepository.create({
       currentPercentage,
       meditionDate,
       meterid: meterId,
     });
 
+    let savedLog: Log;
     try {
-      const savedLog = await this.logsRepository.save(newLog);
-      return savedLog;
-
+      savedLog = await this.logsRepository.save(newLog);
     } catch (error) {
       throw new BadRequestException(
         'Invalid data: verify that meterId references an existing meter',
       );
+    }
+
+    if (lastLog) {
+      const meterInfo = await this.getMeterOwnerInfo(meterId);
+      if (meterInfo) {
+        this.checkForLeak(lastLog.currentPercentage, currentPercentage, meterInfo);
+        this.checkForRefill(lastLog.currentPercentage, currentPercentage, meterInfo);
+      }
+    }
+
+    return savedLog;
+  }
+
+  // ── Obtener el último log de un medidor ──────────────────────────────────────
+  private async getLastLogByMeter(meterId: string): Promise<Log | null> {
+    return this.logsRepository.findOne({
+      where: { meterid: meterId },
+      order: { meditionDate: 'DESC' },
+    });
+  }
+
+  // ── Obtener nombre del medidor y email del dueño ─────────────────────────────
+  private async getMeterOwnerInfo(
+    meterId: string,
+  ): Promise<{ ownerEmail: string; meterName: string } | null> {
+    const meter = await this.meterRepository.findOne({
+      where: { id: meterId },
+      relations: { owner: true },  // ✅ objeto en lugar de array, sin error de tipos
+    });
+
+    if (!meter?.owner?.email) return null;
+
+    return {
+      ownerEmail: meter.owner.email,
+      meterName: meter.metername,
+    };
+  }
+
+  // ── Validación 1: posible fuga (bajó más del 10%) ────────────────────────────
+  private async checkForLeak(
+    previousPercentage: number,
+    currentPercentage: number,
+    meterInfo: { ownerEmail: string; meterName: string },
+  ): Promise<void> {
+    const drop = previousPercentage - currentPercentage;
+
+    if (drop > 10) {
+      try {
+        await this.resend.emails.send({
+          from: 'onboarding@resend.dev',
+          to: meterInfo.ownerEmail,
+          subject: `⚠️ Posible fuga detectada en "${meterInfo.meterName}"`,
+          html: `
+            <h2>Alerta de posible fuga</h2>
+            <p>Se detectó una caída significativa en el medidor <strong>${meterInfo.meterName}</strong>.</p>
+            <p>Te vas a moriri we</p>
+            <ul>
+              <li>Porcentaje anterior: <strong>${previousPercentage}%</strong></li>
+              <li>Porcentaje actual: <strong>${currentPercentage}%</strong></li>
+              <li>Caída registrada: <strong>${drop.toFixed(2)}%</strong></li>
+            </ul>
+            <p>Por favor, revisa el sistema para descartar una fuga.</p>
+          `,
+        });
+      } catch (error) {
+        console.error('Error al enviar correo de fuga:', error);
+      }
+    }
+  }
+
+  // ── Validación 2: recarga identificada ──────────────────────────────────────
+  private async checkForRefill(
+    previousPercentage: number,
+    currentPercentage: number,
+    meterInfo: { ownerEmail: string; meterName: string },
+  ): Promise<void> {
+    const increase = currentPercentage - previousPercentage;
+
+    if (increase > 0) {
+      try {
+        await this.resend.emails.send({
+          from: 'onboarding@resend.dev',
+          to: meterInfo.ownerEmail,
+          subject: `🔄 Recarga identificada en "${meterInfo.meterName}"`,
+          html: `
+            <h2>Recarga identificada</h2>
+            <p>Se detectó una recarga en el medidor <strong>${meterInfo.meterName}</strong>.</p>
+            <ul>
+              <li>Porcentaje anterior: <strong>${previousPercentage}%</strong></li>
+              <li>Porcentaje actual: <strong>${currentPercentage}%</strong></li>
+              <li>Recarga de: <strong>${increase.toFixed(2)}%</strong></li>
+            </ul>
+          `,
+        });
+      } catch (error) {
+        console.error('Error al enviar correo de recarga:', error);
+      }
     }
   }
 }
