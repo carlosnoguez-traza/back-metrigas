@@ -44,6 +44,7 @@ export class LogsService {
     try {
       const savedLog = await this.logsRepository.save(newLog);
       return savedLog;
+
     } catch (error) {
       throw new BadRequestException(
         'Invalid data: verify that meterId references an existing meter',

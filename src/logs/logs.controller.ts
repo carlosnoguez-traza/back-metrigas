@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@n
 import { LogsService } from './logs.service';
 import { CreateLogDto } from './dto/create-log.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
+import { ok } from 'assert';
 
 @Controller('logs')
 export class LogsController {
@@ -9,7 +10,11 @@ export class LogsController {
 
   @Post()
   //@UseGuards(AuthGuard)
-  create(@Body() createLogDto: CreateLogDto) {
-    return this.logsService.create(createLogDto);
+  async create(@Body() createLogDto: CreateLogDto) {
+    const result = await this.logsService.create(createLogDto);
+    return {
+      ok: true,
+      data: result
+    };
   }
 }
