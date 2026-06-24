@@ -5,7 +5,6 @@ import { User } from '../entities/user.entity';
 import { Repository } from 'typeorm';
 import bycrypt from 'bcryptjs';
 import { Resend } from 'resend';
-import Stripe from 'stripe';
 
 @Injectable()
 export class SingUpService {
@@ -17,19 +16,43 @@ export class SingUpService {
     async signUp(createUserDto: CreateUserDto) {
         const { email, pwd } = createUserDto;
 
-        // 1. Validar si el usuario ya existe
+        // 1. Buscar si el usuario ya existe
         const existingUser = await this.userRepository.findOne({ where: { email } });
-        if (existingUser) throw new BadRequestException('El correo ya está registrado');
 
-        // 2. Generar código de 6 dígitos
+        // 2. Preparar los datos del código (se usarán tanto para usuario nuevo como incompleto)
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const expires = new Date();
         expires.setMinutes(expires.getMinutes() + 15); // Expira en 15 minutos
 
-        // 3. Encriptar contraseña
+        // 3. Encriptar la contraseña del formulario
         const hashedPassword = await bycrypt.hash(pwd, 10);
 
-        // 4. Crear usuario (Inactivo)
+        // --- FLUJO A: EL USUARIO YA EXISTE EN LA BASE DE DATOS ---
+        if (existingUser) {
+            // Evaluamos si el registro previo quedó incompleto (isActive es false Y stripeCustomerId está vacío)
+            if (!existingUser.isActive && !existingUser.stripeCustomerId) {
+
+                // Reutilizamos el registro existente y lo actualizamos con los nuevos datos del intento
+                this.userRepository.merge(existingUser, createUserDto, {
+                    pwd: hashedPassword,
+                    verificationCode: code,
+                    verificationCodeExpires: expires,
+                });
+                await this.userRepository.save(existingUser);
+
+                // Reenviamos el correo de verificación
+                await this.sendVerificationEmail(email, code);
+
+                return {
+                    message: 'Se detectó un registro previo incompleto. Hemos renovado tu código, revisa tu correo para verificar tu cuenta.'
+                };
+            }
+
+            // Si ya está activo o ya tiene un proceso con Stripe iniciado, sí es un duplicado real -> Error 400
+            throw new BadRequestException('El correo ya está registrado');
+        }
+
+        // --- FLUJO B: CLIENTE COMPLETAMENTE NUEVO ---
         const newUser = this.userRepository.create({
             ...createUserDto,
             pwd: hashedPassword,
@@ -38,7 +61,14 @@ export class SingUpService {
         });
         await this.userRepository.save(newUser);
 
-        // 5. Enviar correo con Resend
+        // Enviar correo inicial
+        await this.sendVerificationEmail(email, code);
+
+        return { message: 'Usuario registrado. Revisa tu correo para verificar tu cuenta.' };
+    }
+
+    // Método auxiliar privado para evitar duplicar la lógica de Resend
+    private async sendVerificationEmail(email: string, code: string) {
         try {
             const resend = new Resend(process.env.RESEND_API_KEY);
             await resend.emails.send({
@@ -48,10 +78,8 @@ export class SingUpService {
                 html: `<p>Tu código de verificación es: <strong>${code}</strong>. Expira en 15 minutos.</p>`,
             });
         } catch (error) {
-            console.error('Error enviando correo', error);
+            console.error('Error enviando correo con Resend:', error);
         }
-
-        return { message: 'Usuario registrado. Revisa tu correo para verificar tu cuenta.' };
     }
 
     async verifyCode(verifyCodeDto: VerifyCodeDto) {

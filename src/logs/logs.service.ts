@@ -1,26 +1,53 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateLogDto } from './dto/create-log.dto';
-import { UpdateLogDto } from './dto/update-log.dto';
+import { Log } from './entities/log.entity';
 
 @Injectable()
 export class LogsService {
-  create(createLogDto: CreateLogDto) {
-    return 'This action adds a new log';
-  }
+  constructor(
+    @InjectRepository(Log)
+    private readonly logsRepository: Repository<Log>,
+  ) { }
 
-  findAll() {
-    return `This action returns all logs`;
-  }
+  async create(createLogDto: CreateLogDto): Promise<Log> {
+    const { currentPercentage, meterId } = createLogDto;
 
-  findOne(id: number) {
-    return `This action returns a #${id} log`;
-  }
+    // Validar que no se admitan porcentajes negativos
+    if (currentPercentage < 0) {
+      throw new BadRequestException(
+        'currentPercentage must not be a negative number',
+      );
+    }
 
-  update(id: number, updateLogDto: UpdateLogDto) {
-    return `This action updates a #${id} log`;
-  }
+    // Validar que el porcentaje no supere 100
+    if (currentPercentage > 100) {
+      throw new BadRequestException(
+        'currentPercentage must not exceed 100',
+      );
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} log`;
+    // Asignar la fecha de medición automáticamente en el servidor
+    const meditionDate = new Date();
+
+    // Crear el nuevo log con UUID generado
+    const newLog = this.logsRepository.create({
+      currentPercentage,
+      meditionDate,
+      meterid: meterId,
+    });
+
+    try {
+      const savedLog = await this.logsRepository.save(newLog);
+      return savedLog;
+    } catch (error) {
+      throw new BadRequestException(
+        'Invalid data: verify that meterId references an existing meter',
+      );
+    }
   }
 }
