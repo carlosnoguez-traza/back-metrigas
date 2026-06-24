@@ -2,17 +2,20 @@ import {
     Controller,
     Post,
     Get,
+    Delete,
     Body,
     Headers,
     Header,
     Req,
-    BadRequestException
+    BadRequestException,
+    UseGuards
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PayService } from '../services/pay.services';
 import { MailDto } from '../dto/update-pwd-user.dto';
 import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
 import { getPaymentHtmlTemplate } from '../tools/html-structure';
+import { AuthGuard } from '../auth.guard';
 
 
 @Controller('auth')
@@ -25,7 +28,14 @@ export class PayController {
         return await this.payService.createSubscription(mailDto);
     }
 
-    // Endpoint al que Stripe le pegará directamente por detrás
+    // ── Cancelar suscripción ──────────────────────────────────────────────────
+    @Delete('paymethods')
+    @UseGuards(AuthGuard)
+    @ApiOperation({ summary: 'DELETE /auth/paymethods - Cancelar Suscripción en Stripe' })
+    async cancelPaymethod(@Body() mailDto: MailDto) {
+        return await this.payService.cancelSubscription(mailDto);
+    }
+
     @Post('stripe/webhook')
     async stripeWebhook(
         @Headers('stripe-signature') signature: string | undefined,
@@ -44,8 +54,6 @@ export class PayController {
         return await this.payService.handleWebhook(signature, rawBody);
     }
 
-
-    // Rutas simples solo de redirección visual para el usuario de tu app
     @Get('pay/success')
     @Header('Content-Type', 'text/html; charset=utf-8')
     paymentSuccess() {
@@ -67,5 +75,4 @@ export class PayController {
             buttonText: 'Intentar nuevamente desde la app',
         });
     }
-
 }
