@@ -22,7 +22,7 @@ export class LoginService {
         if (!user) throw new NotFoundException('Usuario no encontrado');
 
         // 2. Verificar que la cuenta está activa
-        if (!user.isActive) throw new BadRequestException('La cuenta no está verificada. Por favor verifica tu correo');
+        if (user.stripeCustomerId === '') throw new BadRequestException('La cuenta no está verificada. Por favor verifica tu correo');
 
         // 3. Validar contraseña
         const isPasswordValid = await bycrypt.compare(pwd, user.pwd);
