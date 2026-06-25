@@ -59,7 +59,7 @@ export class PayController {
     paymentSuccess() {
         return getPaymentHtmlTemplate({
             title: '¡Pago Exitoso!',
-            message: 'Vuelve a la aplicacion para iniciar sesión y disfrutar de tu suscripción.',
+            message: 'Vuelve a la aplicacion para disfrutar de tu suscripción, si ya estas logeado, cierra sesión y vuelve a ingresar.',
             isSuccess: true,
             buttonText: 'Volver a la aplicación',
         });

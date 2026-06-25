@@ -67,7 +67,6 @@ export class LogsService {
     return savedLog;
   }
 
-  // ── Obtener el último log de un medidor ──────────────────────────────────────
   private async getLastLogByMeter(meterId: string): Promise<Log | null> {
     return this.logsRepository.findOne({
       where: { meterid: meterId },
@@ -75,7 +74,6 @@ export class LogsService {
     });
   }
 
-  // ── Obtener nombre del medidor y email del dueño ─────────────────────────────
   private async getMeterOwnerInfo(
     meterId: string,
   ): Promise<{ ownerEmail: string; meterName: string } | null> {
@@ -92,7 +90,6 @@ export class LogsService {
     };
   }
 
-  // ── Validación 1: posible fuga (bajó más del 10%) ────────────────────────────
   private async checkForLeak(
     previousPercentage: number,
     currentPercentage: number,
@@ -124,7 +121,6 @@ export class LogsService {
     }
   }
 
-  // ── Validación 2: recarga identificada ──────────────────────────────────────
   private async checkForRefill(
     previousPercentage: number,
     currentPercentage: number,
@@ -153,4 +149,5 @@ export class LogsService {
       }
     }
   }
+
 }
