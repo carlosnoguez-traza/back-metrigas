@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { LogsService } from './logs.service';
 import { Log } from './entities/log.entity';
 import { Meter } from '../meters/entities/meter.entity';
+import { MetricsService } from './services/metrics.services';
 
 @Module({
   imports: [
@@ -12,6 +13,6 @@ import { Meter } from '../meters/entities/meter.entity';
     AuthModule,
   ],
   controllers: [LogsController],
-  providers: [LogsService],
+  providers: [LogsService, MetricsService],
 })
 export class LogsModule { }
