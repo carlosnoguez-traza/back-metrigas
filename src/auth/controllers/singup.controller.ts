@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { SingUpService } from '../services/singup.services';
 import { CreateUserDto, VerifyCodeDto } from '../dto/create-user.dto';
-import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
+import { ApiOperation } from '@nestjs/swagger';
 
 @Controller('auth')
 export class SingUpController {

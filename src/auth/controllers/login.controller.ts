@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { LoginService } from '../services/login.services';
 import { LoginDto } from '../dto/create-user.dto';
-import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
+import { ApiOperation } from '@nestjs/swagger';
 
 
 @Controller('auth')

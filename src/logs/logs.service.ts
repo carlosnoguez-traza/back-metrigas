@@ -26,25 +26,21 @@ export class LogsService {
   async create(createLogDto: CreateLogDto): Promise<Log> {
     const { currentPercentage, meterId } = createLogDto;
 
-    const meter = await this.getMeterWithOwner(meterId);
-    if (!meter?.owner?.stripeSubscriptionId) {
-      throw new UnauthorizedException('El usuario no es premium');
-    }
-
     if (currentPercentage < 0) {
       throw new BadRequestException('currentPercentage must not be a negative number');
     }
 
-    if (currentPercentage < 0) {
-      throw new BadRequestException(
-        'currentPercentage must not be a negative number',
-      );
+    if (currentPercentage > 100) {
+      throw new BadRequestException('currentPercentage must not exceed 100');
     }
 
-    if (currentPercentage > 100) {
-      throw new BadRequestException(
-        'currentPercentage must not exceed 100',
-      );
+    const meter = await this.getMeterWithOwner(meterId);
+    if (!meter) {
+      throw new BadRequestException('Invalid data: verify that meterId references an existing meter');
+    }
+
+    if (!meter.owner?.stripeSubscriptionId) {
+      throw new UnauthorizedException('El usuario no es premium');
     }
 
     const lastLog = await this.getLastLogByMeter(meterId);
@@ -57,14 +53,7 @@ export class LogsService {
       meterid: meterId,
     });
 
-    let savedLog: Log;
-    try {
-      savedLog = await this.logsRepository.save(newLog);
-    } catch (error) {
-      throw new BadRequestException(
-        'Invalid data: verify that meterId references an existing meter',
-      );
-    }
+    const savedLog = await this.logsRepository.save(newLog);
 
     if (lastLog) {
       const meterInfo = await this.getMeterOwnerInfo(meterId);
