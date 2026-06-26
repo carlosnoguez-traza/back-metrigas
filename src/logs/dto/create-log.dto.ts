@@ -22,5 +22,4 @@ export class CreateLogDto {
     @IsUUID('4', { message: 'meterId must be a valid UUID' })
     meterId!: string;
 
-    // meditionDate NO se recibe del cliente, se asigna en el servidor
 }

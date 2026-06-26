@@ -24,7 +24,7 @@ export class LogsController {
   @UseGuards(AuthGuard)
   async getMetrics(@Query() getMetricDto: GetMetricDto, @Req() req: any) {
     const userId = req.user.sub;
-    const result = this.metricsService.consultMeters(getMetricDto, userId);
+    const result = await this.metricsService.consultMeters(getMetricDto, userId);
     return { ok: true, data: result }
   }
 
