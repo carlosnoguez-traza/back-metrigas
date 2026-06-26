@@ -6,6 +6,7 @@ import { GetMetricDto, MonthMeterDto } from './dto/get-metric.dto';
 import { MetricsService } from './services/metrics.services';
 import { ApiResponse } from '@nestjs/swagger';
 import { MonthlyMetricsResponse } from './interfaces/monthly-metrics.interface';
+import { PredictRechargeDto } from './dto/predict-rancharge.dto';
 
 @Controller('logs')
 export class LogsController {
@@ -40,5 +41,13 @@ export class LogsController {
     const userId = req.user.sub;
     const metricsbymonth = this.metricsService.getMonthlyMetrics(monthMetricDto, userId);
     return metricsbymonth
+  }
+
+  @Post('ai')
+  @UseGuards(AuthGuard)
+  async predictRecharge(@Body() predictRechargeDto: PredictRechargeDto, @Req() req: any) {
+    const userId = req.user.sub;
+    const result = await this.logsService.predictRecharge(predictRechargeDto.meterId, userId);
+    return result;
   }
 }

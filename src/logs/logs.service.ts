@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -156,4 +157,57 @@ export class LogsService {
     }
   }
 
+  async predictRecharge(meterId: string, userId: string): Promise<object> {
+
+    // Validar que el medidor existe y pertenece al usuario
+    const meter = await this.meterRepository.findOne({
+      where: { id: meterId, ownerid: userId },
+      relations: { owner: true },
+    });
+
+    if (!meter) {
+      throw new NotFoundException('El medidor solicitado no existe o no está asignado a este usuario.');
+    }
+
+    // Obtener historial de logs ordenado
+    const logs = await this.logsRepository.find({
+      where: { meterid: meterId },
+      order: { meditionDate: 'ASC' },
+    });
+
+    // Validar datos suficientes (mínimo 7 días de telemetría)
+    const uniqueDays = new Set(logs.map(log => new Date(log.meditionDate).toISOString().split('T')[0]));
+    if (logs.length < 15) {
+      return {
+        meterId,
+        prediction: null,
+        message: 'Historial de consumo insuficiente para calcular una predicción confiable. Se requieren al menos 15 lecturas de telemetría.',
+      };
+    }
+
+    // Calcular tasa de consumo diario promedio
+    const firstLog = logs[0];
+    const lastLog = logs[logs.length - 1];
+    const totalDays = (new Date(lastLog.meditionDate).getTime() - new Date(firstLog.meditionDate).getTime()) / (1000 * 60 * 60 * 24);
+    const totalConsumption = firstLog.currentPercentage - lastLog.currentPercentage;
+    const dailyConsumptionRate = totalConsumption / totalDays;
+
+    // Calcular días restantes y fecha estimada de recarga
+    const daysRemaining = Math.max(0, Math.round(lastLog.currentPercentage / dailyConsumptionRate));
+    const estimatedRechargeDate = new Date();
+    estimatedRechargeDate.setDate(estimatedRechargeDate.getDate() + daysRemaining);
+
+    // Nivel de confianza basado en cantidad de datos
+    const confidenceScore = Math.min(0.99, parseFloat((uniqueDays.size / 30).toFixed(2)));
+
+    return {
+      meterId,
+      prediction: {
+        estimatedRechargeDate: estimatedRechargeDate.toISOString(),
+        daysRemaining,
+        estimatedConsumptionRate: `${dailyConsumptionRate.toFixed(2)} %/día`,
+        confidenceScore,
+      },
+    };
+  }
 }
