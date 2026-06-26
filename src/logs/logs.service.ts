@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,6 +25,15 @@ export class LogsService {
 
   async create(createLogDto: CreateLogDto): Promise<Log> {
     const { currentPercentage, meterId } = createLogDto;
+
+    const meter = await this.getMeterWithOwner(meterId);
+    if (!meter?.owner?.stripeSubscriptionId) {
+      throw new UnauthorizedException('El usuario no es premium');
+    }
+
+    if (currentPercentage < 0) {
+      throw new BadRequestException('currentPercentage must not be a negative number');
+    }
 
     if (currentPercentage < 0) {
       throw new BadRequestException(
@@ -65,6 +75,13 @@ export class LogsService {
     }
 
     return savedLog;
+  }
+
+  private async getMeterWithOwner(meterId: string) {
+    return this.meterRepository.findOne({
+      where: { id: meterId },
+      relations: { owner: true },
+    });
   }
 
   private async getLastLogByMeter(meterId: string): Promise<Log | null> {
