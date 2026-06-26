@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards, Req, Query } from '@nestjs/common';
 import { LogsService } from './logs.service';
 import { CreateLogDto } from './dto/create-log.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
+import { AuthGuard } from '../auth/auth.guard';
 import { GetMetricDto, MonthMeterDto } from './dto/get-metric.dto';
 import { MetricsService } from './services/metrics.services';
 import { ApiResponse } from '@nestjs/swagger';
@@ -25,7 +25,7 @@ export class LogsController {
   @UseGuards(AuthGuard)
   async getMetrics(@Query() getMetricDto: GetMetricDto, @Req() req: any) {
     const userId = req.user.sub;
-    const result = this.metricsService.consultMeters(getMetricDto, userId);
+    const result = await this.metricsService.consultMeters(getMetricDto, userId);
     return { ok: true, data: result }
   }
 

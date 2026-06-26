@@ -13,7 +13,7 @@ import {
 import { Request } from 'express';
 import { PayService } from '../services/pay.services';
 import { MailDto } from '../dto/update-pwd-user.dto';
-import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
+import { ApiOperation } from '@nestjs/swagger';
 import { getPaymentHtmlTemplate } from '../tools/html-structure';
 import { AuthGuard } from '../auth.guard';
 

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PasswordService } from '../services/password.services';
 import { UpdatePwdUserDto } from '../dto/update-pwd-user.dto';
-import { ApiOperation } from 'node_modules/@nestjs/swagger/dist/decorators/api-operation.decorator';
+import { ApiOperation } from '@nestjs/swagger';
 
 
 @Controller('auth')
