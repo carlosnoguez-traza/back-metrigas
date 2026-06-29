@@ -67,6 +67,22 @@ export class LogsService {
     return savedLog;
   }
 
+  async findLastByMeterId(meterId: string): Promise<Log> {
+    const log = await this.logsRepository
+      .createQueryBuilder('log')
+      .where('log.meterId = :meterId', { meterId })
+      .orderBy('log.meditionDate', 'DESC')
+      .getOne();
+
+    if (!log) {
+      throw new NotFoundException(
+        `No se encontró ningún log para el meter con id ${meterId}`,
+      );
+    }
+
+    return log;
+  }
+
   private async getMeterWithOwner(meterId: string) {
     return this.meterRepository.findOne({
       where: { id: meterId },

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Req, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req, Query, Param } from '@nestjs/common';
 import { LogsService } from './logs.service';
 import { CreateLogDto } from './dto/create-log.dto';
 import { AuthGuard } from '../auth/auth.guard';
@@ -7,12 +7,13 @@ import { MetricsService } from './services/metrics.services';
 import { ApiResponse } from '@nestjs/swagger';
 import { MonthlyMetricsResponse } from './interfaces/monthly-metrics.interface';
 import { PredictRechargeDto } from './dto/predict-rancharge.dto';
+import { GetLogByMeterDto } from './dto/get-log-meter';
 
 @Controller('logs')
 export class LogsController {
   constructor(
     private readonly logsService: LogsService,
-    private readonly metricsService: MetricsService, // 👈 faltaba esto
+    private readonly metricsService: MetricsService,
   ) { }
 
   @Post()
@@ -27,6 +28,16 @@ export class LogsController {
     const userId = req.user.sub;
     const result = await this.metricsService.consultMeters(getMetricDto, userId);
     return { ok: true, data: result }
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard)
+  async getLastLogByMeterId(@Param() { id }: GetLogByMeterDto) {
+    const log = await this.logsService.findLastByMeterId(id);
+    return {
+      ok: true,
+      data: log,
+    };
   }
 
   @Post('monthly')
