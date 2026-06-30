@@ -4,11 +4,12 @@ import { CreateLogDto } from './dto/create-log.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { GetMetricDto, MonthMeterDto } from './dto/get-metric.dto';
 import { MetricsService } from './services/metrics.services';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { MonthlyMetricsResponse } from './interfaces/monthly-metrics.interface';
 import { PredictRechargeDto } from './dto/predict-rancharge.dto';
 import { GetLogByMeterDto } from './dto/get-log-meter';
 
+@ApiTags('logs')
 @Controller('logs')
 export class LogsController {
   constructor(
@@ -17,6 +18,11 @@ export class LogsController {
   ) { }
 
   @Post()
+  @ApiOperation({ summary: 'Registrar una nueva lectura de un medidor' })
+  @ApiBody({ type: CreateLogDto })
+  @ApiResponse({ status: 201, description: 'Lectura registrada correctamente.' })
+  @ApiResponse({ status: 400, description: 'currentPercentage inválido o meterId no existe.' })
+  @ApiResponse({ status: 401, description: 'El usuario no es premium.' })
   async create(@Body() createLogDto: CreateLogDto) {
     const result = await this.logsService.create(createLogDto);
     return { ok: true, data: result };
@@ -24,6 +30,10 @@ export class LogsController {
 
   @Get()
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Consultar métricas históricas de los medidores del usuario (paginado)' })
+  @ApiResponse({ status: 200, description: 'Métricas obtenidas correctamente.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
   async getMetrics(@Query() getMetricDto: GetMetricDto, @Req() req: any) {
     const userId = req.user.sub;
     const result = await this.metricsService.consultMeters(getMetricDto, userId);
@@ -32,6 +42,12 @@ export class LogsController {
 
   @Get(':id')
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener la última lectura registrada de un medidor' })
+  @ApiParam({ name: 'id', description: 'UUID del medidor', example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
+  @ApiResponse({ status: 200, description: 'Última lectura obtenida correctamente.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  @ApiResponse({ status: 404, description: 'No se encontró ningún log para ese medidor.' })
   async getLastLogByMeterId(@Param() { id }: GetLogByMeterDto) {
     const log = await this.logsService.findLastByMeterId(id);
     return {
@@ -42,6 +58,9 @@ export class LogsController {
 
   @Post('monthly')
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obtener métricas de consumo de un medidor para un mes específico' })
+  @ApiBody({ type: MonthMeterDto })
   @ApiResponse({ status: 200, type: MonthlyMetricsResponse })
   @ApiResponse({ status: 400, description: 'Future month or out of range' })
   @ApiResponse({ status: 403, description: 'You are not the meter owner' })
@@ -56,6 +75,12 @@ export class LogsController {
 
   @Post('ai')
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Predecir fecha estimada de recarga usando IA basada en historial de consumo' })
+  @ApiBody({ type: PredictRechargeDto })
+  @ApiResponse({ status: 200, description: 'Predicción generada (o mensaje de datos insuficientes si hay menos de 15 lecturas).' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  @ApiResponse({ status: 404, description: 'El medidor no existe o no pertenece al usuario.' })
   async predictRecharge(@Body() predictRechargeDto: PredictRechargeDto, @Req() req: any) {
     const userId = req.user.sub;
     const result = await this.logsService.predictRecharge(predictRechargeDto.meterId, userId);
