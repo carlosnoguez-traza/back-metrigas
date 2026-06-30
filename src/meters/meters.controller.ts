@@ -1,8 +1,9 @@
-import { Controller, Post, Body, UseGuards, ParseArrayPipe, Get, Put, Req } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, ParseArrayPipe, Get, Put, Req, Delete, Param } from '@nestjs/common';
 import { MetersService } from './meters.service';
 import { CreateMeterDto } from './dto/create-meter.dto';
 import { AuthGuard } from '../auth/auth.guard';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { DeleteMeterParamsDto } from './dto/delete-meter.dto';
 
 @ApiTags('meters')
 @ApiBearerAuth()
@@ -57,6 +58,27 @@ export class MetersController {
       ok: true,
       message: 'Lista de medidores obtenida correctamente',
       data: meters,
+    };
+  }
+
+  @Delete(':meterId')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Eliminar un medidor y sus logs asociados' })
+  @ApiResponse({ status: 200, description: 'Medidor eliminado correctamente.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
+  @ApiResponse({ status: 403, description: 'No tienes permiso para eliminar este medidor.' })
+  @ApiResponse({ status: 404, description: 'Medidor no encontrado.' })
+  async deleteMeter(
+    @Param() params: DeleteMeterParamsDto,
+    @Req() request: Request,
+  ) {
+    const userId = request['user'].sub;
+
+    await this.metersService.deleteMeter(params.meterId, userId);
+
+    return {
+      ok: true,
+      message: 'Medidor eliminado correctamente',
     };
   }
 }

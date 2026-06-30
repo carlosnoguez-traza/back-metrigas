@@ -1,14 +1,17 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Meter } from './entities/meter.entity';
 import { CreateMeterDto } from './dto/create-meter.dto';
+import { Log } from '../logs/entities/log.entity';
 
 @Injectable()
 export class MetersService {
   constructor(
     @InjectRepository(Meter)
     private readonly meterRepository: Repository<Meter>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) { }
 
   async bulkUpsertMeters(createMeterDtos: CreateMeterDto[]): Promise<void> {
@@ -52,6 +55,26 @@ export class MetersService {
   async getMetersByOwner(ownerId: string): Promise<Meter[]> {
     return await this.meterRepository.find({
       where: { ownerid: ownerId },
+    });
+  }
+
+  async deleteMeter(meterId: string, userId: string): Promise<void> {
+    const meter = await this.meterRepository.findOne({
+      where: { id: meterId },
+    });
+
+    if (!meter) {
+      throw new NotFoundException('Medidor no encontrado');
+    }
+
+    if (meter.ownerid !== userId) {
+      throw new ForbiddenException('No tienes permiso para eliminar este medidor');
+    }
+
+    // Usamos una transacción para asegurar consistencia entre logs y medidor
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(Log, { meterid: meterId });
+      await manager.delete(Meter, { id: meterId });
     });
   }
 }

@@ -8,7 +8,6 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { clear } from 'console';
 
 export class CreateLogDto {
     @ApiProperty({ description: 'Porcentaje actual de carga/nivel del medidor (0-100)', example: 75.5, minimum: 0, maximum: 100 })

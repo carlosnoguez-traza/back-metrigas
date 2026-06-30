@@ -211,30 +211,37 @@ export class MetricsService {
             };
         }
 
-        // ── Map logs to LogEntry ──────────────────────────────────────────────────
+        // ── Map logs to LogEntry (FORZANDO FORMATO ISO ESTÁNDAR) ──────────────────
         const logEntries: LogEntry[] = logs.map((log) => ({
-            date: log.meditionDate,
+            // Aseguramos que se convierta a un String ISO completo que Dart pueda parsear al instante
+            date: log.meditionDate instanceof Date ? log.meditionDate.toISOString() : new Date(log.meditionDate).toISOString() as any,
             percentage: log.currentPercentage,
         }));
 
         // ── Calculate metrics ─────────────────────────────────────────────────────
-        const totalConsumption = parseFloat(
-            (logs[0].currentPercentage - logs[logs.length - 1].currentPercentage).toFixed(2),
-        );
+        // Evitamos consumos negativos si rellenaron el tanque durante el mes
+        const rawConsumption = logs[0].currentPercentage - logs[logs.length - 1].currentPercentage;
+        const totalConsumption = parseFloat(Math.max(0, rawConsumption).toFixed(2));
 
         const averagePercentage = parseFloat(
             (logs.reduce((acc, log) => acc + log.currentPercentage, 0) / logs.length).toFixed(2),
         );
 
-        const uniqueDays = new Set(
-            logs.map((log) => new Date(log.meditionDate).getDate()),
-        );
+        // EXTRAER DÍA FIJO CON SPLIT EVITANDO DESFASE DE ZONA HORARIA
+        const getFixedDay = (meditionDate: any): number => {
+            const dateStr = meditionDate instanceof Date ? meditionDate.toISOString() : String(meditionDate);
+            // Si viene formato "2026-06-26..." el split de la T toma "2026-06-26", y el split del guion toma el "26"
+            const dayPart = dateStr.split('T')[0].split('-')[2];
+            return parseInt(dayPart, 10);
+        };
+
+        const uniqueDays = new Set(logs.map((log) => getFixedDay(log.meditionDate)));
         const activeDays = uniqueDays.size;
 
         // ── Chart data: average percentage per day ────────────────────────────────
         const byDay = new Map<number, number[]>();
         for (const log of logs) {
-            const day = new Date(log.meditionDate).getDate();
+            const day = getFixedDay(log.meditionDate);
             if (!byDay.has(day)) byDay.set(day, []);
             byDay.get(day)!.push(log.currentPercentage);
         }
@@ -262,7 +269,7 @@ export class MetricsService {
         const outliers: LogEntry[] = logs
             .filter((log) => log.currentPercentage < lowerBound || log.currentPercentage > upperBound)
             .map((log) => ({
-                date: log.meditionDate,
+                date: log.meditionDate instanceof Date ? log.meditionDate.toISOString() : new Date(log.meditionDate).toISOString() as any,
                 percentage: log.currentPercentage,
             }));
 
@@ -271,14 +278,14 @@ export class MetricsService {
             year,
             totalConsumption,
             averagePercentage,
-            standardDeviation,  // 👈 útil para que el frontend sepa el rango
-            lowerBound,         // 👈 límite inferior del rango normal
-            upperBound,         // 👈 límite superior del rango normal
+            standardDeviation,
+            lowerBound,
+            upperBound,
             activeDays,
             logs: logEntries,
             chartData,
-            outliers,           // 👈 logs fuera del rango habitual
-            message: null,
+            outliers,
+            message: "Datos reales sincronizados con éxito.", // Cambiado a un string para romper el fallback del Front
         };
     }
 }
