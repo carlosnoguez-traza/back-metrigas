@@ -13,17 +13,20 @@ import {
 import { Request } from 'express';
 import { PayService } from '../services/pay.services';
 import { MailDto } from '../dto/update-pwd-user.dto';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiBody, ApiResponse, ApiExcludeEndpoint, ApiBearerAuth } from '@nestjs/swagger';
 import { getPaymentHtmlTemplate } from '../tools/html-structure';
 import { AuthGuard } from '../auth.guard';
 
-
+@ApiTags('auth')
 @Controller('auth')
 export class PayController {
     constructor(private readonly payService: PayService) { }
 
     @Post('paymethods')
-    @ApiOperation({ summary: 'POST /auth/paymethods - Crear Suscripción en Stripe' })
+    @ApiOperation({ summary: 'Crear suscripción en Stripe (genera URL de checkout)' })
+    @ApiBody({ type: MailDto })
+    @ApiResponse({ status: 201, description: 'Sesión de checkout creada, retorna la URL de pago de Stripe.' })
+    @ApiResponse({ status: 404, description: 'Usuario no encontrado.' })
     async paymethods(@Body() mailDto: MailDto) {
         return await this.payService.createSubscription(mailDto);
     }
@@ -31,11 +34,19 @@ export class PayController {
     // ── Cancelar suscripción ──────────────────────────────────────────────────
     @Delete('paymethods')
     @UseGuards(AuthGuard)
-    @ApiOperation({ summary: 'DELETE /auth/paymethods - Cancelar Suscripción en Stripe' })
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Cancelar suscripción activa en Stripe' })
+    @ApiBody({ type: MailDto })
+    @ApiResponse({ status: 200, description: 'Suscripción cancelada correctamente.' })
+    @ApiResponse({ status: 400, description: 'El usuario no tiene una suscripción activa.' })
+    @ApiResponse({ status: 401, description: 'No autorizado.' })
+    @ApiResponse({ status: 404, description: 'Usuario no encontrado.' })
     async cancelPaymethod(@Body() mailDto: MailDto) {
         return await this.payService.cancelSubscription(mailDto);
     }
 
+    // Excluido de Swagger: lo llama Stripe directamente, no es consumido por el cliente de la API
+    @ApiExcludeEndpoint()
     @Post('stripe/webhook')
     async stripeWebhook(
         @Headers('stripe-signature') signature: string | undefined,
@@ -54,6 +65,8 @@ export class PayController {
         return await this.payService.handleWebhook(signature, rawBody);
     }
 
+    // Excluido de Swagger: devuelve HTML de redirección, no es un endpoint de datos
+    @ApiExcludeEndpoint()
     @Get('pay/success')
     @Header('Content-Type', 'text/html; charset=utf-8')
     paymentSuccess() {
@@ -65,6 +78,7 @@ export class PayController {
         });
     }
 
+    @ApiExcludeEndpoint()
     @Get('pay/failed')
     @Header('Content-Type', 'text/html; charset=utf-8')
     paymentFailed() {
