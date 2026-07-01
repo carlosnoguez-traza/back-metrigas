@@ -1,7 +1,5 @@
 import {
     IsNumber,
-    IsString,
-    IsOptional,
     Min,
     Max,
     IsUUID,
@@ -16,11 +14,6 @@ export class CreateLogDto {
     @Min(0, { message: 'currentPercentage must not be a negative number' })
     @Max(100, { message: 'currentPercentage must not exceed 100' })
     currentPercentage!: number;
-
-    @ApiPropertyOptional({ description: 'Capacidad del medidor (opcional)', example: '150.5' })
-    @IsOptional()
-    @IsString()
-    capacity?: string;
 
     @ApiProperty({ description: 'UUID del medidor asociado a esta lectura', example: 'f47ac10b-58cc-4372-a567-0e02b2c3d479' })
     @IsUUID('4', { message: 'meterId must be a valid UUID' })
