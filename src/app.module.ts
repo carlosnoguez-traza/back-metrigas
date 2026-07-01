@@ -16,7 +16,7 @@ import { LogsModule } from './logs/logs.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.HOST,
-      port: parseInt(process.env.DB_PORT ?? process.env.PORT ?? '5432', 10),
+      port: parseInt(process.env.DB_PORT ?? '5432', 10),
       username: process.env.USERNAME,
       password: process.env.PASSWORD,
       database: process.env.DATABASE,
