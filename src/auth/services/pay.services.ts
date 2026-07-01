@@ -38,8 +38,8 @@ export class PayService {
             metadata: {
                 userId: user.id.toString(),
             },
-            success_url: 'http://localhost:3000/auth/pay/success',
-            cancel_url: 'http://localhost:3000/auth/pay/failed',
+            success_url: 'https://back-metrigas-production.up.railway.app/auth/pay/success',
+            cancel_url: 'https://back-metrigas-production.up.railway.app/auth/pay/failed',
         });
 
         return { url: session.url };
